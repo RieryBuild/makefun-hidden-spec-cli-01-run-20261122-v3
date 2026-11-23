@@ -368,7 +368,10 @@ function unifiedEdits(lines: string[], strict: boolean): Edit[] {
       continue;
     }
     if (isSectionStart(l, lines[i + 1])) {
-      if (cur !== null && !cur.sawHunk && !cur.hasDashPair) {
+      if (cur !== null && !cur.sawHunk) {
+        // SPEC 6: a section's header stays open until its first hunk, so a second
+        // --- / +++ pair before any hunk is part of that header and RE-NAMES
+        // the old/new path (last-wins); it does not start a new section.
         cur.dashOld = dashPath(l);
         cur.dashNew = dashPath(lines[i + 1]!);
         cur.hasDashPair = true;
