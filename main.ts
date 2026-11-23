@@ -514,10 +514,14 @@ function firstDef<T>(...vs: (T | undefined)[]): T | undefined {
 function sectionEdit(sec: RawSection, strict: boolean): Edit {
   const oldRaw = firstDef(sec.dashOld, sec.renameFrom, sec.diffOld);
   const newRaw = firstDef(sec.dashNew, sec.renameTo, sec.diffNew);
-  const oldNull = oldRaw === null;
-  const newNull = newRaw === null;
+  // D39 (SPEC 6): `/dev/null` means no file, for the RESOLVED path from ANY
+  // source — dash (already null via dashPath), rename from/to, or diff --git.
+  const oldPath = oldRaw === '/dev/null' ? null : oldRaw;
+  const newPath = newRaw === '/dev/null' ? null : newRaw;
+  const oldNull = oldPath === null;
+  const newNull = newPath === null;
   if (oldNull || sec.newFile) {
-    const p = newRaw ?? '/dev/null';
+    const p = newPath ?? '/dev/null';
     return (tree) => {
       if (!safe(p)) throw new Fail('unsafe', p);
       if (tree.get(p) !== null) throw new Fail('exists', p);
@@ -525,16 +529,16 @@ function sectionEdit(sec: RawSection, strict: boolean): Edit {
     };
   }
   if (newNull || sec.deletedFile) {
-    const p = oldRaw ?? '/dev/null';
+    const p = oldPath ?? '/dev/null';
     return (tree) => {
       if (!safe(p)) throw new Fail('unsafe', p);
       if (tree.get(p) === null) throw new Fail('missing', p);
       tree.now.set(p, null);
     };
   }
-  if (oldRaw !== newRaw) {
-    const o = oldRaw as string;
-    const n = newRaw as string;
+  if (oldPath !== newPath) {
+    const o = oldPath as string;
+    const n = newPath as string;
     return (tree) => {
       if (!safe(o)) throw new Fail('unsafe', o);
       if (!safe(n)) throw new Fail('unsafe', n);
@@ -547,7 +551,7 @@ function sectionEdit(sec: RawSection, strict: boolean): Edit {
       return { old: o, nw: n };
     };
   }
-  const p = oldRaw as string;
+  const p = oldPath as string;
   return (tree) => {
     if (!safe(p)) throw new Fail('unsafe', p);
     const before = tree.get(p);
